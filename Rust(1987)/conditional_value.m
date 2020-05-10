@@ -1,0 +1,60 @@
+function f = conditional_value(theta11,theta30,theta31,theta32,theta33,b,dim,rc)
+
+%% Set up state space
+
+grid = 1;
+iteration = 10000;
+error = 0.001;
+
+s = [0:grid:dim+150]'; %mileage 
+n = size(s,1); %state space dimension
+d = [0;1];
+m = size(d,1);
+
+%% Begin Value function iteration
+
+% Initial value 
+Vtemp = ones(n,m); %next period conditional value function
+
+
+for i = 1:iteration 
+    
+    %Conditional value function for no replacement now
+    %jumpab: a is for zero jumps in capital
+    %b is for not replacing next period
+    jump00 = exp(-0.001*theta11*s(1:n-3) + b*Vtemp(1:n-3,1));
+    jump01 = exp(-rc + b*Vtemp(1:n-3,2));
+    
+    jump10 = exp(-0.001*theta11*s(2:n-2) + b*Vtemp(2:n-2,1));
+    jump11 = exp(-rc + b*Vtemp(2:n-2,2));
+    
+    jump20 = exp(-0.001*theta11*s(3:n-1) + b*Vtemp(3:n-1,1));
+    jump21 = exp(-rc + b*Vtemp(3:n-1,2));
+    
+    jump30 = exp(-0.001*theta11*s(4:n) + b*Vtemp(4:n,1));
+    jump31 = exp(-rc + b*Vtemp(4:n,2));
+    
+    V(:,1) = theta30 * log(jump00 + jump01) ...
+        + theta31 * log(jump10 + jump11) ...
+        + theta32 * log(jump20 + jump21) ...
+        + theta33 * log(jump30 + jump31);
+    
+    %there is replacement this period
+    nojump0 = exp(b*Vtemp(1,1)*ones(n-3,1));
+    nojump1 = exp(-rc + b*Vtemp(1,2)*ones(n-3,1));
+    
+    V(:,2) = log(nojump0 + nojump1);
+    
+    if max(max(abs(V-Vtemp(1:n-3,:))))<error
+        break
+    end
+    
+    Vtemp(1:n-3,:) = V;
+    Vtemp(n-2:n,:) = V(n-3,1)*ones(3,2);
+    
+end
+
+
+f = V(1:dim,:);
+
+end
